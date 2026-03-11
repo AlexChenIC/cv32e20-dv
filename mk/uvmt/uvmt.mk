@@ -73,6 +73,7 @@ SIMULATOR    ?= $(CV_SIMULATOR)
 # Optionally exclude the OVPsim (not recommended)
 USE_ISS      ?= YES
 ISS          ?= IMPERAS
+COMPILE_SPIKE=$(USE_ISS)
 
 # Common configuration variables
 CFG             ?= default

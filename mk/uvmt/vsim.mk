@@ -33,7 +33,7 @@ VCOVER                  = vcover
 # Paths
 VWORK     				= work
 VSIM_COV_MERGE_DIR      = $(SIM_CFG_RESULTS)/$(CFG)/merged
-UVM_HOME               ?= $(abspath $(shell which $(VLIB))/../../verilog_src/uvm-1.2/src)
+UVM_HOME               = $(abspath $(shell which $(VLIB))/../../verilog_src/uvm-1.2/src)
 export QUESTASIM_HOME  ?= $(abspath $(shell which $(VLIB))/../../)
 USES_DPI = 1
 
@@ -106,6 +106,7 @@ VSIM_LDGEN_FLAGS ?= \
 ###############################################################################
 # VLOG (Compilation)
 VLOG_FLAGS    ?= \
+		-O0 \
 		-suppress 2577 \
 		-suppress 2583 \
 		-suppress 13185 \
@@ -145,9 +146,9 @@ ifeq ($(call IS_YES,$(COMPILE_SPIKE)),YES)
     LIBS = spike_lib
 endif
 
-VLOG_FLAGS += "+define+$(CV_CORE_UC)_TRACE_EXECUTION"
+VLOG_FLAGS += "+define+$(CV_CORE_UC)_TRACE_EXECUTION+RVFI"
 VLOG_FLAGS += "+define+UVM"
-VLOG_FLAGS += "+define+$(CORE_DEFINES)"
+# VLOG_FLAGS += "+define+$(CORE_DEFINES)"
 
 ###############################################################################
 # VOPT (Optimization)
@@ -172,18 +173,22 @@ VSIM_FLAGS        += -suppress 8522
 VSIM_FLAGS        += -suppress 8550
 VSIM_FLAGS        += -suppress 8549
 VSIM_FLAGS        += -permit_unmatched_virtual_intf
+VSIM_FLAGS        += -voptargs=+acc
 VSIM_DEBUG_FLAGS  ?= -debugdb
 VSIM_GUI_FLAGS    ?= -gui -debugdb
 VSIM_SCRIPT_DIR	   = $(abspath $(MAKE_PATH)/../tools/vsim)
 
 VSIM_UVM_ARGS      = +incdir+$(UVM_HOME)/src $(UVM_HOME)/src/uvm_pkg.sv
 
-VSIM_FLAGS += -sv_lib $(basename $(OVP_MODEL_DPI))
 ifeq ($(call IS_YES,$(USE_ISS)),YES)
-VSIM_FLAGS += +USE_ISS
+	VSIM_FLAGS += -sv_lib $(basename $(OVP_MODEL_DPI))
+	VSIM_FLAGS += +USE_ISS
 else
-VSIM_FLAGS += +DISABLE_OVPSIM
+	VSIM_FLAGS += +DISABLE_OVPSIM
 endif
+
+VSIM_FLAGS += -sv_lib $(basename $(RVVI_STUB_LIB))
+
 ifeq ($(call IS_YES,$(TEST_DISABLE_ALL_CSR_CHECKS)),YES)
 VSIM_FLAGS +="+DISABLE_ALL_CSR_CHECKS"
 endif
@@ -386,8 +391,6 @@ gen_corev-dv: $(LIBS)
 			$(VSIM_FLAGS) \
 			$(CV_CORE_LC)_instr_gen_tb_top_vopt \
 			$(DPILIB_VSIM_OPT) \
-			+UVM_TESTNAME=$(GEN_UVM_TEST) \
-			+num_of_tests=$(GEN_NUM_TESTS)  \
 			-l $(TEST)_$(GEN_START_INDEX)_$(GEN_NUM_TESTS).log \
 			+start_idx=$(GEN_START_INDEX) \
 			+num_of_tests=$(GEN_NUM_TESTS) \
@@ -396,7 +399,9 @@ gen_corev-dv: $(LIBS)
 			+ldgen_cp_test_path=$(SIM_TEST_RESULTS) \
 			$(CFG_PLUSARGS) \
 			$(GEN_PLUSARGS)
-
+# 			+UVM_TESTNAME=$(GEN_UVM_TEST) \
+# 			+num_of_tests=$(GEN_NUM_TESTS)  \
+#           +ldgen_cp_test_path=$(SIM_CFG_RESULTS) \
 	# Copy out final assembler files to test directory
 	for (( idx=${GEN_START_INDEX}; idx < $$((${GEN_START_INDEX} + ${GEN_NUM_TESTS})); idx++ )); do \
 		cp -f ${BSP}/link_corev-dv.ld ${SIM_TEST_RESULTS}/$$idx/test_program/link.ld; \
@@ -476,7 +481,7 @@ gen_ovpsim_ic:
 export IMPERAS_TOOLS=$(SIM_RUN_RESULTS)/ovpsim.ic
 
 # Target to create work directory in $(VSIM_RESULTS)/
-lib: mk_vsim_dir $(CV_CORE_PKG) $(SVLIB_PKG) $(TBSRC_PKG) $(TBSRC)
+lib: mk_vsim_dir  $(CV_CORE_PKG) $(CV_VERIF_PKG) rvvi_stub $(SVLIB_PKG) $(TBSRC_PKG) $(TBSRC)
 	if [ ! -d "$(SIM_CFG_RESULTS)/$(VWORK)" ]; then \
 		$(VLIB) $(SIM_CFG_RESULTS)/$(VWORK); \
 	fi
@@ -495,6 +500,7 @@ vlog: $(LIBS) lib
 			$(CFG_COMPILE_FLAGS) \
 			+incdir+$(DV_UVME_PATH) \
 			+incdir+$(DV_UVMT_PATH) \
+			+incdir+$(DPI_DASM_PKG) \
 			+incdir+$(UVM_HOME) \
 			$(UVM_HOME)/uvm_pkg.sv \
 			-f $(CV_CORE_MANIFEST) \
@@ -515,13 +521,16 @@ opt: vlog
 			$(RTLSRC_VLOG_TB_TOP) \
 			-o $(RTLSRC_VOPT_TB_TOP)
 
-comp: opt
+comp: clone_cv_core_rtl $(SVLIB_PKG) $(CV_VERIF_PKG) rvvi_stub opt
 
 RUN_DIR = $(abspath $(SIM_RUN_RESULTS))
 
 # Target to run VSIM (i.e. run the simulation)
 run: $(VSIM_RUN_PREREQ) gen_ovpsim_ic
 	@echo "$(BANNER)"
+	@echo ""
+	@echo "run target"
+	@echo ""
 	@echo "* Running vsim in $(RUN_DIR)"
 	@echo "* Log: $(RUN_DIR)/vsim-$(VSIM_TEST).log"
 	@echo "$(BANNER)"
@@ -534,7 +543,7 @@ run: $(VSIM_RUN_PREREQ) gen_ovpsim_ic
 			$(VSIM_FLAGS) \
 			-l vsim-$(VSIM_TEST).log \
 			$(DPILIB_VSIM_OPT) \
-			+UVM_TESTNAME=$(TEST_UVM_TEST) \
+			+UVM_TESTNAME=$(UVM_TEST_NAME) \
 			$(RTLSRC_VOPT_TB_TOP) \
 			$(CFG_PLUSARGS) \
 			$(TEST_PLUSARGS)
@@ -581,5 +590,7 @@ clean:
 	rm -rf $(SIM_RESULTS)
 
 # All generated files plus the clone of the RTL
-clean_all: clean clean_riscv-dv clean_test_programs clean_bsp clean_compliance clean_embench clean_dpi_dasm_spike clean_svlib
+# TODO: fix the 'clean_embench' targets
+clean_all: clean clean_rtl clean_riscv-dv clean_test_programs clean_bsp clean_compliance clean_dpi_dasm_spike clean_svlib clean_rvvi_stub clean_core_v_verif
 	rm -rf $(CV_CORE_PKG)
+
