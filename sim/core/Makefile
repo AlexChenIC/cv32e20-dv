@@ -281,7 +281,7 @@ clean_all: clean-all-banner clean-all-targets
 ###############################################################################
 # certification test-program directories (prebuilt elf file copy-pasted from act4)
 certification_PROGRAM_PATH    = $(ACT4_PKG)/work/cv32e20/elfs
-certification_PROGRAM_RELPATH = ../../external/act4/work/cv32e20/elfs
+certification_PROGRAM_RELPATH = ../../vendor_lib/riscv-arch-test/act4/work/cv32e20/elfs
 
 ###############################################################################
 # certification test target (run ALL ELFs under compliance/rv32, quiet + summary)

@@ -47,7 +47,10 @@ fetched on demand via a Make target — it is **not** a git submodule.
   export CV_SW_PREFIX=riscv64-unknown-elf-
   ```
 - **Sail RISC-V reference model v0.10** (`sail_riscv_sim` on `$PATH`): required version is 0.10.
-  Build from source: https://github.com/riscv/sail-riscv — see ACT4 README for instructions.
+  Install the pre-built binary:
+  ```
+  curl --location https://github.com/riscv/sail-riscv/releases/download/0.10/sail_riscv_sim-$(uname)-$(arch).tar.gz | sudo tar xvz --directory=/usr/local --strip-components=1
+  ```
 - **Python uv** package manager: https://docs.astral.sh/uv/getting-started/installation/
 - **Verilator** v5.042 or later.
 
