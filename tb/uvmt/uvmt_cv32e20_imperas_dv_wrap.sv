@@ -653,5 +653,6 @@ module uvmt_cv32e20_imperas_dv_wrap import uvm_pkg::*;
 
 endmodule : uvmt_cv32e20_imperas_dv_wrap
 `endif  // USE_ISS_IMPERAS
+`endif  // FORMAL
 
 `endif // __UVMT_CV32E20_IMPERAS_DV_WRAP_SV__

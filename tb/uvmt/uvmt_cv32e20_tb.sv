@@ -78,15 +78,55 @@ module uvmt_cv32e20_tb;
    uvmt_cv32e20_isa_covg_if     isa_covg_if();
 
    bind cve2_core
-    uvma_rvfi_instr_if rvfi_instr_if(
+    uvma_rvfi_instr_if rvfi_instr_probe_if(
                                 .clk            ( clknrst_if.clk),
-                                .reset_n        ( clknrst_if.reset_n)
-                                );
-        bind cve2_cs_registers
-        uvma_rvfi_unified_csr_if#(4096,32) rvfi_csr_if(
-                                .clk            ( clknrst_if.clk),
-                                .reset_n        ( clknrst_if.reset_n)
-        );
+                                .reset_n        ( clknrst_if.reset_n),
+
+                                .rvfi_valid     (rvfi_instr_if.rvfi_valid),
+                                .rvfi_order     (rvfi_instr_if.rvfi_order),
+                                .rvfi_insn      (rvfi_instr_if.rvfi_insn),
+                                .rvfi_trap      (rvfi_instr_if.rvfi_trap),
+                                .rvfi_halt      (rvfi_instr_if.rvfi_halt),
+                                .rvfi_dbg       (rvfi_instr_if.rvfi_dbg),
+                                .rvfi_dbg_mode  (rvfi_instr_if.rvfi_dbg_mode),
+                                .rvfi_nmip      ('0),
+                                .rvfi_intr      (rvfi_instr_if.rvfi_intr),
+                                .rvfi_mode      (rvfi_instr_if.rvfi_mode),
+                                .rvfi_ixl       (rvfi_instr_if.rvfi_ixl),
+                                .rvfi_pc_rdata  (rvfi_instr_if.rvfi_pc_rdata),
+                                .rvfi_pc_wdata  (rvfi_instr_if.rvfi_pc_wdata),
+                                .rvfi_rs1_addr  (rvfi_instr_if.rvfi_rs1_addr),
+                                .rvfi_rs1_rdata (rvfi_instr_if.rvfi_rs1_rdata),
+                                .rvfi_rs2_addr  (rvfi_instr_if.rvfi_rs2_addr),
+                                .rvfi_rs2_rdata (rvfi_instr_if.rvfi_rs2_rdata),
+                                .rvfi_rs3_addr  (rvfi_instr_if.rvfi_rs3_addr),
+                                .rvfi_rs3_rdata (rvfi_instr_if.rvfi_rs3_rdata),
+                                .rvfi_rd1_addr  (rvfi_instr_if.rvfi_rd1_addr),
+                                .rvfi_rd1_wdata (rvfi_instr_if.rvfi_rd1_wdata),
+                                .rvfi_rd2_addr  ('0),
+                                .rvfi_rd2_wdata ('0),
+                                .rvfi_mem_addr  (rvfi_instr_if.rvfi_mem_addr),
+                                .rvfi_mem_rdata (rvfi_instr_if.rvfi_mem_rdata),
+                                .rvfi_mem_rmask (rvfi_instr_if.rvfi_mem_rmask),
+                                .rvfi_mem_wdata (rvfi_instr_if.rvfi_mem_wdata),
+                                .rvfi_mem_wmask (rvfi_instr_if.rvfi_mem_wmask),
+                                .*
+    );
+  bind cve2_cs_registers
+    uvma_rvfi_unified_csr_if#(4096,32) rvfi_csr_probe_if(
+                            .clk                  ( clknrst_if.clk),
+                            .reset_n              ( clknrst_if.reset_n),
+                            .rvfi_named_csr_rmask (rvfi_csr_if.rvfi_named_csr_rmask),
+                            .rvfi_named_csr_wmask (rvfi_csr_if.rvfi_named_csr_wmask),
+                            .rvfi_named_csr_rdata (rvfi_csr_if.rvfi_named_csr_rdata),
+                            .rvfi_named_csr_wdata (rvfi_csr_if.rvfi_named_csr_wdata),
+                            .rvfi_csr_addr        (rvfi_csr_if.rvfi_csr_addr),
+                            .rvfi_csr_rmask       (rvfi_csr_if.rvfi_csr_rmask),
+                            .rvfi_csr_wmask       (rvfi_csr_if.rvfi_csr_wmask),
+                            .rvfi_csr_rdata       (rvfi_csr_if.rvfi_csr_rdata),
+                            .rvfi_csr_wdata       (rvfi_csr_if.rvfi_csr_wdata),
+                            .*
+    );
 
    // RVVI SystemVerilog Interface
    rvviTrace #( .NHART(1), .RETIRE(1)) rvvi_if();
@@ -306,8 +346,8 @@ module uvmt_cv32e20_tb;
      uvm_config_db#(virtual uvmt_cv32e20_isa_covg_if          )::set(.cntxt(null), .inst_name("*.env"),                        .field_name("isa_covg_vif"),     .value(isa_covg_if)                                );
      uvm_config_db#(virtual uvma_interrupt_if                 )::set(.cntxt(null), .inst_name("*.env"),                        .field_name("intr_vif"),         .value(interrupt_if)                               );
      uvm_config_db#(virtual uvma_debug_if                     )::set(.cntxt(null), .inst_name("*.env"),                        .field_name("debug_vif"),        .value(debug_if)                                   );
-     uvm_config_db#(virtual uvma_rvfi_instr_if                )::set(.cntxt(null), .inst_name("*.env.rvfi_agent"),             .field_name("instr_vif0"),       .value(dut_wrap.cv32e20_top_i.u_cve2_top.u_cve2_core.rvfi_instr_if));
-     uvm_config_db#(virtual uvma_rvfi_unified_csr_if#(4096,32))::set(.cntxt(null), .inst_name("*.env.rvfi_agent"),             .field_name("csr_vif0"),         .value(dut_wrap.cv32e20_top_i.u_cve2_top.u_cve2_core.cs_registers_i.rvfi_csr_if));
+     uvm_config_db#(virtual uvma_rvfi_instr_if                )::set(.cntxt(null), .inst_name("*.env.rvfi_agent"),             .field_name("instr_vif0"),       .value(dut_wrap.cv32e20_top_i.u_cve2_top.u_cve2_core.rvfi_instr_probe_if));
+     uvm_config_db#(virtual uvma_rvfi_unified_csr_if#(4096,32))::set(.cntxt(null), .inst_name("*.env.rvfi_agent"),             .field_name("csr_vif0"),         .value(dut_wrap.cv32e20_top_i.u_cve2_top.u_cve2_core.cs_registers_i.rvfi_csr_probe_if));
      // TODO: fix this
      //uvm_config_db#(virtual RVVI_memory                      )::set(.cntxt(null), .inst_name("*.env"),                        .field_name("rvvi_memory_vif"),  .value(iss_wrap.ram.memory)                        );
 

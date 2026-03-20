@@ -153,6 +153,25 @@ module uvmt_cv32e20_dut_wrap #(
          .data_rdata_i           ( obi_memory_data_if.rdata       ),
          .data_err_i             ( '0                             ),
 
+         // Core-V Extension Interface (CV-X-IF)
+         // Issue Interface
+         .x_issue_valid_o        (                                ),
+         .x_issue_ready_i        ( '0                             ),
+         .x_issue_req_o          (                                ),
+         .x_issue_resp_i         ( '0                             ),
+
+         // Register Interface
+         .x_register_o           (                                ),
+
+         // Commit Interface
+         .x_commit_valid_o       (                                ),
+         .x_commit_o             (                                ),
+
+         // Result Interface
+         .x_result_valid_i       ( '0                             ),
+         .x_result_ready_o       (                                ),
+         .x_result_i             ( '0                             ),
+
   // Interrupt inputs
          .irq_software_i         ( 1'b0/*irq_uvma[3]*/),
          .irq_timer_i            ( 1'b0/*irq_uvma[7]*/),
@@ -162,6 +181,7 @@ module uvmt_cv32e20_dut_wrap #(
 
   // Debug Interface
          .debug_req_i             ( 1'b0/*debug_req_uvma*/),
+         .debug_halted_o          (),
          .dm_halt_addr_i          ( 32'h1A11_0800 ),
          .dm_exception_addr_i     ( 32'h1A14_0000 ),
          .crash_dump_o            (),

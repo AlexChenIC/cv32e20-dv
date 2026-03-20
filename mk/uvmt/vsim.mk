@@ -1,5 +1,5 @@
 ###############################################################################
-#
+# Copyright 2026 Eclipse Foundation
 # Copyright 2020 OpenHW Group
 #
 # Licensed under the Solderpad Hardware Licence, Version 2.0 (the "License");
@@ -17,53 +17,53 @@
 ###############################################################################
 #
 # VSIM-specific Makefile for the Core-V-Verif "uvmt" testbench.
-# VSIM is the Mentor Graphics Questa SystemVerilog simulator.
+# VSIM is the Siemens EDA Questa SystemVerilog simulator.
 #
 ###############################################################################
 
 # Executables
-VLIB   					= vlib
-VMAP 					= vmap
-VLOG 					= $(CV_SIM_PREFIX) vlog
-VOPT 					= $(CV_SIM_PREFIX) vopt
-VSIM 					= $(CV_SIM_PREFIX) vsim
-VISUALIZER				= $(CV_TOOL_PREFIX) visualizer
+VLIB                    = vlib
+VMAP                    = vmap
+VLOG                    = $(CV_SIM_PREFIX) vlog
+VOPT                    = $(CV_SIM_PREFIX) vopt
+VSIM                    = $(CV_SIM_PREFIX) vsim
+VISUALIZER              = $(CV_TOOL_PREFIX) visualizer
 VCOVER                  = vcover
 
 # Paths
-VWORK     				= work
+QUESTASIM_HOME         ?= $(abspath $(shell which $(VLIB))/../../)
+VWORK                   = work
 VSIM_COV_MERGE_DIR      = $(SIM_CFG_RESULTS)/$(CFG)/merged
-UVM_HOME               ?= $(abspath $(shell which $(VLIB))/../../verilog_src/uvm-1.2/src)
-export QUESTASIM_HOME  ?= $(abspath $(shell which $(VLIB))/../../)
+UVM_HOME                = $(QUESTASIM_HOME)/verilog_src/uvm-1.2/src
 USES_DPI = 1
 
 # Special var to point to tool and installation dependent path of DPI headers.
 # Used to recompile dpi_dasm_spike if needed (by default, not needed).
-DPI_INCLUDE            ?= $(abspath $(shell which $(VLIB))/../../include)
+DPI_INCLUDE            ?= $(QUESTASIM_HOME)/include
 
 # Default flags
-VSIM_USER_FLAGS         ?=
-VOPT_COV  				?= +cover=setf+$(RTLSRC_VLOG_TB_TOP).
-VSIM_COV 				?= -coverage
-VOPT_WAVES_ADV_DEBUG    ?= -designfile design.bin
-VSIM_WAVES_ADV_DEBUG    ?= -qwavedb=+signal+assertion+ignoretxntime+msgmode=both
-VSIM_WAVES_DO           ?= $(VSIM_SCRIPT_DIR)/waves.tcl
+VSIM_USER_FLAGS        ?=
+VOPT_COV               ?= +cover=setf+$(RTLSRC_VLOG_TB_TOP).
+VSIM_COV               ?= -coverage
+VOPT_WAVES_ADV_DEBUG   ?= -designfile design.bin
+VSIM_WAVES_ADV_DEBUG   ?= -qwavedb=+signal+assertion+ignoretxntime+msgmode=both
+VSIM_WAVES_DO          ?= $(VSIM_SCRIPT_DIR)/waves.tcl
 
 # Common QUIET flag defaults to -quiet unless VERBOSE is set
 ifeq ($(call IS_YES,$(VERBOSE)),YES)
-QUIET=
+	QUIET=
 else
-QUIET=-quiet
+	QUIET=-quiet
 endif
 
 ifeq ($(USES_DPI),1)
-  DPILIB_VLOG_OPT =
-  DPILIB_VSIM_OPT = -sv_lib $(UVM_HOME)/../../../uvm-1.2/linux_x86_64/uvm_dpi
-  DPILIB_TARGET = dpi_lib$(BITS)
+	DPILIB_VLOG_OPT =
+	DPILIB_VSIM_OPT = -sv_lib $(QUESTASIM_HOME)/uvm-1.2/linux_x86_64/uvm_dpi
+	DPILIB_TARGET = dpi_lib$(BITS)
 else
-  DPILIB_VLOG_OPT = +define+UVM_NO_DPI
-  DPILIB_VSIM_OPT =
-  DPILIB_TARGET =
+	DPILIB_VLOG_OPT = +define+UVM_NO_DPI
+	DPILIB_VSIM_OPT =
+	DPILIB_TARGET =
 endif
 
 LIBDIR  = $(UVM_HOME)/lib
@@ -105,7 +105,7 @@ VSIM_LDGEN_FLAGS ?= \
 
 ###############################################################################
 # VLOG (Compilation)
-VLOG_FLAGS    ?= \
+VLOG_FLAGS	?= \
 		-suppress 2577 \
 		-suppress 2583 \
 		-suppress 13185 \
@@ -129,20 +129,20 @@ VLOG_FILE_LIST = -f $(DV_UVMT_PATH)/uvmt_$(CV_CORE_LC).flist
 VLOG_FLAGS += $(DPILIB_VLOG_OPT)
 
 ifeq ($(call IS_YES,$(USE_ISS)),YES)
-    ifeq ($(ISS),IMPERAS)
-	VLOG_FILE_LIST += -f $(DV_UVMT_PATH)/imperas_iss.flist
-    endif
-    ifeq ($(ISS),SPIKE)
-	VSIM_FLAGS += -sv_lib $(SPIKE_CUSTOMEXT_LIB)
-	VSIM_FLAGS += -sv_lib $(SPIKE_RISCV_LIB)
-	VSIM_FLAGS += -sv_lib $(SPIKE_DISASM_LIB)
-	LIBS = spike_lib
-    endif
+	ifeq ($(ISS),IMPERAS)
+		VLOG_FILE_LIST += -f $(DV_UVMT_PATH)/imperas_iss.flist
+	endif
+	ifeq ($(ISS),SPIKE)
+		VSIM_FLAGS += -sv_lib $(SPIKE_CUSTOMEXT_LIB)
+		VSIM_FLAGS += -sv_lib $(SPIKE_RISCV_LIB)
+		VSIM_FLAGS += -sv_lib $(SPIKE_DISASM_LIB)
+		LIBS = spike_lib
+	endif
 endif
 
 ifeq ($(call IS_YES,$(COMPILE_SPIKE)),YES)
-    VSIM_FLAGS += -sv_lib $(SPIKE_FESVR_LIB)
-    LIBS = spike_lib
+	VSIM_FLAGS += -sv_lib $(SPIKE_FESVR_LIB)
+	LIBS = spike_lib
 endif
 
 VLOG_FLAGS += "+define+$(CV_CORE_UC)_TRACE_EXECUTION"
@@ -160,35 +160,39 @@ VOPT_FLAGS    ?= \
                  $(QUIET)
 
 ###############################################################################
-# VSIM (Simulaion)
+# VSIM (Simulation)
 
-VSIM_FLAGS        += $(VSIM_USER_FLAGS)
-VSIM_FLAGS        += $(USER_RUN_FLAGS)
-VSIM_FLAGS        += -sv_seed $(RNDSEED)
-VSIM_FLAGS        += -64
-VSIM_FLAGS        += -suppress 7031
-VSIM_FLAGS        += -suppress 8858
-VSIM_FLAGS        += -suppress 8522
-VSIM_FLAGS        += -suppress 8550
-VSIM_FLAGS        += -suppress 8549
-VSIM_FLAGS        += -permit_unmatched_virtual_intf
-VSIM_DEBUG_FLAGS  ?= -debugdb
-VSIM_GUI_FLAGS    ?= -gui -debugdb
-VSIM_SCRIPT_DIR	   = $(abspath $(MAKE_PATH)/../tools/vsim)
+VSIM_FLAGS       += $(VSIM_USER_FLAGS)
+VSIM_FLAGS       += $(USER_RUN_FLAGS)
+VSIM_FLAGS       += -sv_seed $(RNDSEED)
+VSIM_FLAGS       += -64
+VSIM_FLAGS       += -suppress 7031
+VSIM_FLAGS       += -suppress 8858
+VSIM_FLAGS       += -suppress 8522
+VSIM_FLAGS       += -suppress 8550
+VSIM_FLAGS       += -suppress 8549
+VSIM_FLAGS       += -permit_unmatched_virtual_intf
+# VSIM_FLAGS       += -voptargs=+acc # Preserve signals for debugging
+VSIM_DEBUG_FLAGS ?= -debugdb
+VSIM_GUI_FLAGS   ?= -gui
+VSIM_SCRIPT_DIR   = $(abspath $(MAKE_PATH)/../tools/vsim)
 
-VSIM_UVM_ARGS      = +incdir+$(UVM_HOME)/src $(UVM_HOME)/src/uvm_pkg.sv
+VSIM_UVM_ARGS     = +incdir+$(UVM_HOME)/src $(UVM_HOME)/src/uvm_pkg.sv
 
-VSIM_FLAGS += -sv_lib $(basename $(OVP_MODEL_DPI))
 ifeq ($(call IS_YES,$(USE_ISS)),YES)
-VSIM_FLAGS += +USE_ISS
+    VSIM_FLAGS += -sv_lib $(basename $(OVP_MODEL_DPI))
+	VSIM_FLAGS += +USE_ISS
 else
-VSIM_FLAGS += +DISABLE_OVPSIM
+	VSIM_FLAGS += +DISABLE_OVPSIM
 endif
+
+VSIM_FLAGS += -sv_lib $(basename $(RVVI_STUB_LIB))
+
 ifeq ($(call IS_YES,$(TEST_DISABLE_ALL_CSR_CHECKS)),YES)
-VSIM_FLAGS +="+DISABLE_ALL_CSR_CHECKS"
+	VSIM_FLAGS +="+DISABLE_ALL_CSR_CHECKS"
 endif
 ifneq ($(TEST_DISABLE_CSR_CHECK),)
-VSIM_FLAGS += +DISABLE_CSR_CHECK=$(TEST_DISABLE_CSR_CHECK)
+	VSIM_FLAGS += +DISABLE_CSR_CHECK=$(TEST_DISABLE_CSR_CHECK)
 endif
 
 VSIM_FLAGS += -sv_lib $(basename $(DPI_DASM_LIB))
@@ -196,25 +200,25 @@ VSIM_FLAGS += -sv_lib $(basename $(abspath $(SVLIB_LIB)))
 
 # Skip compile if requested (COMP=NO)
 ifneq ($(call IS_NO,$(COMP)),NO)
-VSIM_SIM_PREREQ = comp
+	VSIM_SIM_PREREQ = comp
 endif
 
 ################################################################################
 # Coverage database generation
 ifeq ($(call IS_YES,$(COV)),YES)
-VOPT_FLAGS  += $(VOPT_COV)
-VSIM_FLAGS  += $(VSIM_COV)
-VSIM_FLAGS  += -do 'set TEST ${VSIM_TEST}; source $(VSIM_SCRIPT_DIR)/cov.tcl'
+	VOPT_FLAGS  += $(VOPT_COV)
+	VSIM_FLAGS  += $(VSIM_COV)
+	VSIM_FLAGS  += -do 'set TEST ${VSIM_TEST}; source $(VSIM_SCRIPT_DIR)/cov.tcl'
 endif
 
 ################################################################################
 # Waveform generation
 ifeq ($(call IS_YES,$(WAVES)),YES)
-ifeq ($(call IS_YES,$(ADV_DEBUG)),YES)
-VSIM_FLAGS += $(VSIM_WAVES_ADV_DEBUG)
-else
-VSIM_FLAGS += -do $(VSIM_WAVES_DO)
-endif
+	ifeq ($(call IS_YES,$(ADV_DEBUG)),YES)
+		VSIM_FLAGS += $(VSIM_WAVES_ADV_DEBUG)
+	else
+		VSIM_FLAGS += -do $(VSIM_WAVES_DO)
+	endif
 endif
 
 ifeq ($(call IS_YES,$(ADV_DEBUG)),YES)
@@ -224,16 +228,15 @@ endif
 ################################################################################
 # Interactive simulation
 ifeq ($(call IS_YES,$(GUI)),YES)
-ifeq ($(call IS_YES,$(ADV_DEBUG)),YES)
-VSIM_FLAGS += -visualizer=+designfile=../design.bin
+	ifeq ($(call IS_YES,$(ADV_DEBUG)),YES)
+		VSIM_FLAGS += -visualizer=+designfile=../design.bin
+	else
+		VSIM_FLAGS += $(VSIM_GUI_FLAGS) $(VSIM_DEBUG_FLAGS)
+	endif
 else
-VSIM_FLAGS += -gui
+	VSIM_FLAGS += -batch
 endif
-VSIM_FLAGS += -do $(VSIM_SCRIPT_DIR)/gui.tcl
-else
-VSIM_FLAGS += -batch
 VSIM_FLAGS += -do $(VSIM_SCRIPT_DIR)/vsim.tcl
-endif
 
 ################################################################################
 # Coverage command
@@ -244,50 +247,50 @@ COV_MERGE_FIND = find $(SIM_CFG_RESULTS) -type f -name "*.ucdb" | grep -v merged
 COV_MERGE_FLAGS=merge -64 -out merged.ucdb -inputs ucdb.list
 
 ifeq ($(call IS_YES,$(MERGE)),YES)
-COV_DIR=$(VSIM_COV_MERGE_DIR)
-COV_MERGE_TARGET=cov_merge
+	COV_DIR=$(VSIM_COV_MERGE_DIR)
+	COV_MERGE_TARGET=cov_merge
 else
-COV_DIR=$(SIM_RUN_RESULTS)
+	COV_DIR=$(SIM_RUN_RESULTS)
 
-ifeq ($(call IS_YES,$(MERGE)),YES)
-ifeq ($(call IS_YES,$(GUI)),YES)
-# Merged coverage GUI
-COV_FLAGS=-viewcov $(VSIM_COV_MERGE_DIR)/merged.ucdb
-else
-# Merged coverage report
-COV_FLAGS=-c -viewcov $(VSIM_COV_MERGE_DIR)/merged.ucdb -do "file delete -force $(COV_REPORT); coverage report -html -details -precision 2 -annotate -output $(COV_REPORT); exit -f"
-endif
-else
-ifeq ($(call IS_YES,$(GUI)),YES)
-# Test coverage GUI
-COV_FLAGS=-viewcov $(TEST).ucdb
-else
-# Test coverage report
-COV_FLAGS=-c -viewcov $(TEST).ucdb -do "file delete -force $(COV_REPORT); coverage report -html -details -precision 2 -annotate -output $(COV_REPORT); exit -f"
-endif
-endif
+	ifeq ($(call IS_YES,$(MERGE)),YES)
+		ifeq ($(call IS_YES,$(GUI)),YES)
+            # Merged coverage GUI
+			COV_FLAGS=-viewcov $(VSIM_COV_MERGE_DIR)/merged.ucdb
+		else
+            # Merged coverage report
+			COV_FLAGS=-c -viewcov $(VSIM_COV_MERGE_DIR)/merged.ucdb -do "file delete -force $(COV_REPORT); coverage report -html -details -precision 2 -annotate -output $(COV_REPORT); exit -f"
+		endif
+	else
+		ifeq ($(call IS_YES,$(GUI)),YES)
+            # Test coverage GUI
+			COV_FLAGS=-viewcov $(TEST).ucdb
+		else
+            # Test coverage report
+			COV_FLAGS=-c -viewcov $(TEST).ucdb -do "file delete -force $(COV_REPORT); coverage report -html -details -precision 2 -annotate -output $(COV_REPORT); exit -f"
+		endif
+	endif
 endif
 
 ################################################################################
 # Waveform (post-process) command line
 ifeq ($(call IS_YES,$(ADV_DEBUG)),YES)
-WAVES_CMD = \
-	cd $(SIM_RUN_RESULTS) && \
-		$(VISUALIZER) \
-			-designfile $(SIM_CFG_RESULTS)/design.bin \
-			-wavefile qwave.db
+	WAVES_CMD = \
+		cd $(SIM_RUN_RESULTS) && \
+			$(VISUALIZER) \
+				-designfile $(SIM_CFG_RESULTS)/design.bin \
+				-wavefile qwave.db
 else
-WAVES_CMD = \
-	cd $(SIM_RUN_RESULTS) && \
-		$(VSIM) \
-			-gui \
-			-view vsim.wlf
+	WAVES_CMD = \
+		cd $(SIM_RUN_RESULTS) && \
+			$(VSIM) \
+				$(VSIM_GUI_FLAGS) \
+				-view vsim.wlf
 endif
 
 # Compute vsim (run) prereqs, by default do a full compile + run when running
 # a test, set COMP=NO to skip vlib-vlog-vopt and just run vsim
 ifneq ($(call IS_NO,$(COMP)),NO)
-VSIM_RUN_PREREQ = opt
+	VSIM_RUN_PREREQ = opt
 endif
 
 ################################################################################
@@ -386,8 +389,6 @@ gen_corev-dv: $(LIBS)
 			$(VSIM_FLAGS) \
 			$(CV_CORE_LC)_instr_gen_tb_top_vopt \
 			$(DPILIB_VSIM_OPT) \
-			+UVM_TESTNAME=$(GEN_UVM_TEST) \
-			+num_of_tests=$(GEN_NUM_TESTS)  \
 			-l $(TEST)_$(GEN_START_INDEX)_$(GEN_NUM_TESTS).log \
 			+start_idx=$(GEN_START_INDEX) \
 			+num_of_tests=$(GEN_NUM_TESTS) \
@@ -396,7 +397,6 @@ gen_corev-dv: $(LIBS)
 			+ldgen_cp_test_path=$(SIM_TEST_RESULTS) \
 			$(CFG_PLUSARGS) \
 			$(GEN_PLUSARGS)
-
 	# Copy out final assembler files to test directory
 	for (( idx=${GEN_START_INDEX}; idx < $$((${GEN_START_INDEX} + ${GEN_NUM_TESTS})); idx++ )); do \
 		cp -f ${BSP}/link_corev-dv.ld ${SIM_TEST_RESULTS}/$$idx/test_program/link.ld; \
@@ -420,8 +420,8 @@ corev-dv: clean_riscv-dv clone_riscv-dv comp_corev-dv
 # But this does not:
 #                make compliance RISCV_ISA=rv32imc COMPLIANCE_PROG=I-ADD-01
 #
-RISCV_ISA       ?= rv32i
-COMPLIANCE_PROG ?= I-ADD-01
+RISCV_ISA        ?= rv32i
+COMPLIANCE_PROG  ?= I-ADD-01
 
 SIG_ROOT          ?= $(SIM_CFG_RESULTS)/$(RISCV_ISA)
 SIG               ?= $(SIM_CFG_RESULTS)/$(RISCV_ISA)/$(COMPLIANCE_PROG)/$(RUN_INDEX)/$(COMPLIANCE_PROG).signature_output
@@ -476,7 +476,7 @@ gen_ovpsim_ic:
 export IMPERAS_TOOLS=$(SIM_RUN_RESULTS)/ovpsim.ic
 
 # Target to create work directory in $(VSIM_RESULTS)/
-lib: mk_vsim_dir $(CV_CORE_PKG) $(SVLIB_PKG) $(TBSRC_PKG) $(TBSRC)
+lib: mk_vsim_dir  $(CV_CORE_PKG) $(CV_VERIF_PKG) rvvi_stub $(SVLIB_PKG) $(TBSRC_PKG) $(TBSRC)
 	if [ ! -d "$(SIM_CFG_RESULTS)/$(VWORK)" ]; then \
 		$(VLIB) $(SIM_CFG_RESULTS)/$(VWORK); \
 	fi
@@ -495,6 +495,7 @@ vlog: $(LIBS) lib
 			$(CFG_COMPILE_FLAGS) \
 			+incdir+$(DV_UVME_PATH) \
 			+incdir+$(DV_UVMT_PATH) \
+			+incdir+$(DPI_DASM_PKG) \
 			+incdir+$(UVM_HOME) \
 			$(UVM_HOME)/uvm_pkg.sv \
 			-f $(CV_CORE_MANIFEST) \
@@ -515,7 +516,7 @@ opt: vlog
 			$(RTLSRC_VLOG_TB_TOP) \
 			-o $(RTLSRC_VOPT_TB_TOP)
 
-comp: opt
+comp: clone_cv_core_rtl $(SVLIB_PKG) $(CV_VERIF_PKG) rvvi_stub opt
 
 RUN_DIR = $(abspath $(SIM_RUN_RESULTS))
 
@@ -534,7 +535,7 @@ run: $(VSIM_RUN_PREREQ) gen_ovpsim_ic
 			$(VSIM_FLAGS) \
 			-l vsim-$(VSIM_TEST).log \
 			$(DPILIB_VSIM_OPT) \
-			+UVM_TESTNAME=$(TEST_UVM_TEST) \
+			+UVM_TESTNAME=$(UVM_TEST_NAME) \
 			$(RTLSRC_VOPT_TB_TOP) \
 			$(CFG_PLUSARGS) \
 			$(TEST_PLUSARGS)
@@ -581,5 +582,7 @@ clean:
 	rm -rf $(SIM_RESULTS)
 
 # All generated files plus the clone of the RTL
-clean_all: clean clean_riscv-dv clean_test_programs clean_bsp clean_compliance clean_embench clean_dpi_dasm_spike clean_svlib
+# TODO: fix the 'clean_embench' targets
+clean_all: clean clean_rtl clean_riscv-dv clean_test_programs clean_bsp clean_compliance clean_dpi_dasm_spike clean_svlib clean_rvvi_stub clean_core_v_verif
 	rm -rf $(CV_CORE_PKG)
+
