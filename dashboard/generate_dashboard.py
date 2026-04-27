@@ -48,6 +48,14 @@ def load_runs(data_dir: Path, file_name: str) -> list:
     return json.loads(path.read_text())
 
 
+def display_field(value: str) -> str:
+    if not value:
+        return "N/A"
+    if "${{" in value:
+        return "matrix"
+    return value
+
+
 def is_valid_matrix_job(job: dict) -> bool:
     bench = job.get("bench", "")
     testcase = job.get("testcase", "")
@@ -62,6 +70,9 @@ def enrich(run: dict) -> dict:
     run["created_at_display"] = format_datetime(run.get("created_at", ""))
     for job in run.get("jobs", []):
         job["duration_display"] = format_duration(job.get("duration_seconds", 0))
+        job["bench_display"] = display_field(job.get("bench", ""))
+        job["testcase_display"] = display_field(job.get("testcase", ""))
+        job["simulator_display"] = display_field(job.get("simulator", ""))
     return run
 
 

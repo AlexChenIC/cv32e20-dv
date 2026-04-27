@@ -357,9 +357,9 @@
                           <tbody>
                             {% for job in run.jobs %}
                             <tr>
-                              <td class="text-uppercase">{{ job.bench }}</td>
-                              <td>{{ job.testcase }}</td>
-                              <td><code>{{ job.simulator }}</code></td>
+                              <td class="text-uppercase">{{ job.bench_display }}</td>
+                              <td>{{ job.testcase_display }}</td>
+                              <td><code>{{ job.simulator_display }}</code></td>
                               <td>
                                 {% if job.conclusion == 'success' %}
                                   <a href="{{ job.html_url }}" target="_blank" rel="noopener" class="badge badge-pass text-decoration-none">PASS</a>
