@@ -63,6 +63,13 @@ jobs:
         with:
           path: /tmp/cv32e20-dashboard-site
 
+      - name: Upload dashboard preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv32e20-dashboard-site
+          path: /tmp/cv32e20-dashboard-site/
+          retention-days: 14
+
       - name: Upload dashboard data
         uses: actions/upload-artifact@v4
         with:
