@@ -1,115 +1,570 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CV32E20 CI Dashboard</title>
+  <title>CV32E20-DV CI Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
-    body { background: #f6f7f9; }
-    .topbar { background: #fff; border-bottom: 1px solid #dee2e6; }
-    .status-card { border-left: 4px solid #6c757d; }
-    .status-card.success { border-left-color: #198754; }
-    .status-card.failure { border-left-color: #dc3545; }
-    .job-cell { min-width: 180px; }
+    :root {
+      --pass-color: #198754;
+      --fail-color: #dc3545;
+      --skip-color: #6c757d;
+      --warn-color: #fd7e14;
+      --na-color: #e9ecef;
+    }
+
+    body {
+      background: #f5f6fa;
+      color: #212529;
+    }
+
+    .page-header {
+      background: #fff;
+      border-bottom: 1px solid #dee2e6;
+      box-shadow: 0 0.125rem 0.35rem rgba(33, 37, 41, 0.08);
+    }
+
+    .brand-line {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-line img {
+      width: 100px;
+      max-width: 30vw;
+      height: auto;
+    }
+
+    .dashboard-title {
+      font-weight: 700;
+      letter-spacing: 0;
+      margin: 0;
+      font-size: clamp(1.15rem, 2vw, 1.65rem);
+    }
+
+    .status-card {
+      border-left: 4px solid var(--skip-color);
+      border-radius: 8px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .status-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0.45rem 1rem rgba(33, 37, 41, 0.12) !important;
+    }
+
+    .status-card.success { border-left-color: var(--pass-color); }
+    .status-card.failure { border-left-color: var(--fail-color); }
+    .status-card.cancelled,
+    .status-card.timed_out { border-left-color: var(--warn-color); }
+    .status-card.unknown { border-left-color: var(--skip-color); }
+
+    .badge-pass { background-color: var(--pass-color); }
+    .badge-fail { background-color: var(--fail-color); }
+    .badge-skip { background-color: var(--skip-color); }
+    .badge-warn { background-color: var(--warn-color); }
+
+    .section-title {
+      color: #555b62;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .matrix-table th.suite-header {
+      font-size: 0.72rem;
+      writing-mode: vertical-lr;
+      text-align: left;
+      padding: 8px 4px;
+      white-space: nowrap;
+    }
+
+    .matrix-table td.matrix-td {
+      text-align: center;
+      vertical-align: middle;
+      min-width: 44px;
+      height: 44px;
+      padding: 2px;
+    }
+
+    .matrix-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .matrix-icon.pass { background: #d1e7dd; color: #0a3622; }
+    .matrix-icon.fail { background: #f8d7da; color: #58151c; }
+    .matrix-icon.skip { background: #fff3cd; color: #664d03; }
+    .matrix-icon.na { background: var(--na-color); color: #adb5bd; }
+    .matrix-icon:hover { opacity: 0.82; }
+    a.matrix-icon:hover { text-decoration: none; }
+
+    .wf-selector .btn {
+      font-size: 0.82rem;
+      padding: 0.3rem 0.9rem;
+    }
+
+    .wf-selector .btn-check:checked + .btn-outline-primary {
+      background-color: #0d6efd;
+      color: #fff;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 260px;
+    }
+
+    .job-table {
+      font-size: 0.85rem;
+    }
+
+    .job-table td,
+    .job-table th {
+      padding: 0.35rem 0.5rem;
+    }
+
+    .accordion-button {
+      gap: 0.4rem;
+    }
+
+    .accordion-button code,
+    .status-card code {
+      color: #d63384;
+    }
+
+    footer {
+      background: #212529;
+      color: #f8f9fa;
+    }
+
+    @media (max-width: 768px) {
+      .page-header .container-fluid {
+        align-items: flex-start;
+      }
+
+      .brand-line {
+        align-items: flex-start;
+      }
+
+      .matrix-table th.suite-header {
+        font-size: 0.6rem;
+      }
+
+      .matrix-icon {
+        width: 26px;
+        height: 26px;
+        font-size: 0.75rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <nav class="navbar topbar shadow-sm">
-    <div class="container-fluid">
-      <span class="navbar-brand fw-semibold">CV32E20 CI Dashboard</span>
-      <span class="navbar-text text-muted small">{{ repo }} · {{ generated_at }}</span>
+  <header class="page-header">
+    <div class="container-fluid px-3 px-lg-4 py-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <div class="brand-line">
+            <img src="https://openhwfoundation.org/images/openhw-landscape.png"
+                 alt="OpenHW Group"
+                 onerror="this.onerror=null; this.src='https://avatars.githubusercontent.com/u/51096416?s=128&v=4';">
+            <h1 class="dashboard-title">CV32E20-DV CI Dashboard</h1>
+            <span class="badge text-bg-primary">Phase 1</span>
+          </div>
+          <div class="text-muted mt-3">Generated: {{ generated_at }}</div>
+        </div>
+        <div class="text-muted small text-lg-end">
+          <div>{{ repo }}</div>
+          <a href="https://github.com/{{ repo }}" target="_blank" rel="noopener">Source repository</a>
+        </div>
+      </div>
     </div>
-  </nav>
+  </header>
 
-  <main class="container-fluid p-4">
-    <section class="row g-3 mb-4">
-      {% for wf in workflows %}
-      <div class="col-md-6">
-        <div class="card status-card {{ wf.latest.conclusion }}">
-          <div class="card-body">
-            <div class="d-flex justify-content-between">
-              <h5 class="card-title">{{ wf.display_name }}</h5>
-              <span class="badge {{ 'text-bg-success' if wf.latest.conclusion == 'success' else ('text-bg-danger' if wf.latest.conclusion == 'failure' else 'text-bg-secondary') }}">
-                {{ wf.latest.conclusion|upper }}
-              </span>
+  <main class="container-fluid px-3 px-lg-4 py-4">
+    <section class="mb-4">
+      <h5 class="section-title">Latest Run Status</h5>
+      <div class="row g-3">
+        {% for wf in workflows %}
+        <div class="col-lg-6">
+          <div class="card status-card shadow-sm {{ wf.latest.conclusion }}">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                <h6 class="card-title mb-0 fw-bold">{{ wf.display_name }}</h6>
+                {% if wf.latest.conclusion == 'success' %}
+                  <span class="badge badge-pass">PASS</span>
+                {% elif wf.latest.conclusion == 'failure' %}
+                  <span class="badge badge-fail">FAIL</span>
+                {% elif wf.latest.conclusion in ['cancelled', 'timed_out'] %}
+                  <span class="badge badge-warn">{{ wf.latest.conclusion|upper }}</span>
+                {% else %}
+                  <span class="badge badge-skip">{{ wf.latest.conclusion|upper }}</span>
+                {% endif %}
+              </div>
+              <div class="text-muted small">
+                <div><strong>Branch:</strong> {{ wf.latest.head_branch }} &middot; <code>{{ wf.latest.head_sha }}</code></div>
+                <div>
+                  <strong>Jobs:</strong>
+                  <span class="text-success">{{ wf.latest.passed_jobs }} passed</span>
+                  {% if wf.latest.failed_jobs > 0 %}
+                    / <span class="text-danger">{{ wf.latest.failed_jobs }} failed</span>
+                  {% endif %}
+                  {% if wf.latest.skipped_jobs > 0 %}
+                    / <span class="text-secondary">{{ wf.latest.skipped_jobs }} skipped</span>
+                  {% endif %}
+                  ({{ wf.latest.total_jobs }} total)
+                </div>
+                <div><strong>Duration:</strong> {{ wf.latest.duration_display }} &middot; <strong>Run:</strong> #{{ wf.latest.run_number }}</div>
+              </div>
+              <a href="{{ wf.latest.html_url }}" class="btn btn-outline-secondary btn-sm mt-3 {{ 'disabled' if wf.latest.html_url == '#' else '' }}" target="_blank" rel="noopener">
+                View on GitHub &rarr;
+              </a>
             </div>
-            <div class="text-muted small">
-              Branch {{ wf.latest.head_branch }} · <code>{{ wf.latest.head_sha }}</code> · Run #{{ wf.latest.run_number }}
-            </div>
-            <div class="small mt-2">
-              {{ wf.latest.passed_jobs }}/{{ wf.latest.total_jobs }} jobs passed · {{ wf.latest.duration_display }}
-            </div>
-            <a class="btn btn-sm btn-outline-secondary mt-3" href="{{ wf.latest.html_url }}" target="_blank" rel="noopener">View run</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <h5 class="section-title mb-0">Test Coverage Matrix</h5>
+        <div class="wf-selector btn-group" role="group" aria-label="Select workflow">
+          {% for wf in workflows %}
+          <input type="radio" class="btn-check" name="matrixWf" id="wf-{{ wf.key }}"
+                 value="{{ wf.key }}" autocomplete="off"
+                 {{ 'checked' if wf.key == default_matrix_wf else '' }}
+                 onchange="renderMatrix(this.value)">
+          <label class="btn btn-outline-primary" for="wf-{{ wf.key }}">{{ wf.display_name }}</label>
+          {% endfor %}
+        </div>
+        <span id="matrixStats" class="text-muted small"></span>
+      </div>
+
+      {% if matrix_data %}
+      <div class="card shadow-sm">
+        <div class="card-body p-2">
+          <div class="d-flex align-items-center flex-wrap gap-3 mb-2 px-2 small">
+            <span class="text-muted">Legend:</span>
+            <span><span class="matrix-icon pass" style="width:16px;height:16px;font-size:0.65rem">&#10003;</span> Pass</span>
+            <span><span class="matrix-icon fail" style="width:16px;height:16px;font-size:0.65rem">&#10007;</span> Fail</span>
+            <span><span class="matrix-icon skip" style="width:16px;height:16px;font-size:0.65rem">?</span> Skipped/Other</span>
+            <span><span class="matrix-icon na" style="width:16px;height:16px;font-size:0.65rem">&ndash;</span> Not covered</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm matrix-table mb-0" id="matrixTable">
+              <thead id="matrixHead"></thead>
+              <tbody id="matrixBody"></tbody>
+            </table>
           </div>
         </div>
       </div>
-      {% endfor %}
+      {% else %}
+      <div class="alert alert-secondary">No CI run data available yet.</div>
+      {% endif %}
     </section>
 
-    <section class="card shadow-sm mb-4">
-      <div class="card-header">Latest Test Matrix</div>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Workflow</th>
-              <th>Bench</th>
-              <th>Test</th>
-              <th>Simulator</th>
-              <th>Status</th>
-              <th>Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for job in latest_jobs %}
-            <tr>
-              <td>{{ job.workflow }}</td>
-              <td>{{ job.bench }}</td>
-              <td>{{ job.testcase }}</td>
-              <td>{{ job.simulator }}</td>
-              <td>
-                <a href="{{ job.html_url }}" target="_blank" rel="noopener" class="badge text-decoration-none {{ 'text-bg-success' if job.conclusion == 'success' else ('text-bg-danger' if job.conclusion == 'failure' else 'text-bg-secondary') }}">
-                  {{ job.conclusion|upper }}
-                </a>
-              </td>
-              <td>{{ job.duration_display }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="6" class="text-muted">No CI data yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <section class="mb-4">
+      <h5 class="section-title">Trends (Last {{ trend_count }} Runs)</h5>
+      <div class="row g-3">
+        {% for wf in workflows %}
+        <div class="col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-header py-2 small fw-semibold">{{ wf.display_name }}</div>
+            <div class="card-body p-2">
+              {% if wf.runs %}
+              <div class="chart-container">
+                <canvas id="chart-{{ wf.key }}"></canvas>
+              </div>
+              {% else %}
+              <div class="chart-container d-flex align-items-center justify-content-center text-muted small">
+                No run data yet.
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </section>
 
-    <section class="card shadow-sm">
-      <div class="card-header">Recent Runs</div>
-      <div class="card-body">
+    <section class="mb-4">
+      <h5 class="section-title">Run History</h5>
+      <div class="accordion" id="historyAccordion">
         {% for wf in workflows %}
-        <h6>{{ wf.display_name }}</h6>
-        <div class="table-responsive mb-4">
-          <table class="table table-sm">
-            <thead><tr><th>Run</th><th>Branch</th><th>Status</th><th>Jobs</th><th>Duration</th><th>Created</th></tr></thead>
-            <tbody>
-              {% for run in wf.runs[:10] %}
-              <tr>
-                <td><a href="{{ run.html_url }}" target="_blank" rel="noopener">#{{ run.run_number }}</a></td>
-                <td>{{ run.head_branch }} · <code>{{ run.head_sha }}</code></td>
-                <td>{{ run.conclusion }}</td>
-                <td>{{ run.passed_jobs }}/{{ run.total_jobs }}</td>
-                <td>{{ run.duration_display }}</td>
-                <td>{{ run.created_at_display }}</td>
-              </tr>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button {{ '' if loop.first else 'collapsed' }}" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#collapse-{{ wf.key }}">
+              <span>{{ wf.display_name }}</span>
+              <span class="badge bg-secondary ms-2">{{ wf.runs|length }} runs</span>
+            </button>
+          </h2>
+          <div id="collapse-{{ wf.key }}" class="accordion-collapse collapse {{ 'show' if loop.first else '' }}"
+               data-bs-parent="#historyAccordion">
+            <div class="accordion-body p-2">
+              {% if wf.runs %}
+              <div class="accordion" id="runsAccordion-{{ wf.key }}">
+                {% for run in wf.runs[:20] %}
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#run-{{ wf.key }}-{{ run.id }}"
+                            style="font-size:0.85rem">
+                      {% if run.conclusion == 'success' %}
+                        <span class="badge badge-pass">PASS</span>
+                      {% elif run.conclusion == 'failure' %}
+                        <span class="badge badge-fail">FAIL</span>
+                      {% elif run.conclusion in ['cancelled', 'timed_out'] %}
+                        <span class="badge badge-warn">{{ run.conclusion|upper }}</span>
+                      {% else %}
+                        <span class="badge badge-skip">{{ run.conclusion|upper }}</span>
+                      {% endif %}
+                      <span>#{{ run.run_number }} &middot; {{ run.head_branch }} &middot; <code>{{ run.head_sha }}</code> &middot; {{ run.duration_display }}</span>
+                      <span class="ms-auto text-muted" style="font-size:0.75rem">{{ run.created_at_display }}</span>
+                    </button>
+                  </h2>
+                  <div id="run-{{ wf.key }}-{{ run.id }}" class="accordion-collapse collapse"
+                       data-bs-parent="#runsAccordion-{{ wf.key }}">
+                    <div class="accordion-body p-2">
+                      <div class="mb-2 small">
+                        <a href="{{ run.html_url }}" target="_blank" rel="noopener">View on GitHub</a>
+                        &middot; Event: {{ run.event }}
+                        &middot; Jobs: {{ run.passed_jobs }}/{{ run.total_jobs }} passed
+                      </div>
+                      {% if run.jobs %}
+                      <div class="table-responsive">
+                        <table class="table table-sm table-hover job-table mb-0">
+                          <thead class="table-light">
+                            <tr>
+                              <th>Bench</th>
+                              <th>Test</th>
+                              <th>Simulator</th>
+                              <th>Status</th>
+                              <th>Duration</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for job in run.jobs %}
+                            <tr>
+                              <td class="text-uppercase">{{ job.bench }}</td>
+                              <td>{{ job.testcase }}</td>
+                              <td><code>{{ job.simulator }}</code></td>
+                              <td>
+                                {% if job.conclusion == 'success' %}
+                                  <a href="{{ job.html_url }}" target="_blank" rel="noopener" class="badge badge-pass text-decoration-none">PASS</a>
+                                {% elif job.conclusion == 'failure' %}
+                                  <a href="{{ job.html_url }}" target="_blank" rel="noopener" class="badge badge-fail text-decoration-none">FAIL</a>
+                                {% elif job.conclusion in ['cancelled', 'timed_out'] %}
+                                  <a href="{{ job.html_url }}" target="_blank" rel="noopener" class="badge badge-warn text-decoration-none">{{ job.conclusion|upper }}</a>
+                                {% else %}
+                                  <a href="{{ job.html_url }}" target="_blank" rel="noopener" class="badge badge-skip text-decoration-none">{{ job.conclusion|upper }}</a>
+                                {% endif %}
+                              </td>
+                              <td>{{ job.duration_display }}</td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                      {% else %}
+                      <div class="text-muted">No job data available.</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
               {% else %}
-              <tr><td colspan="6" class="text-muted">No runs yet.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+              <div class="text-muted">No run history available.</div>
+              {% endif %}
+            </div>
+          </div>
         </div>
         {% endfor %}
       </div>
     </section>
   </main>
+
+  <footer class="py-3 mt-4">
+    <div class="container-fluid px-4">
+      <div class="row">
+        <div class="col-md-6">
+          <small class="text-light opacity-75">
+            &copy; {{ year }} <a href="https://www.openhwgroup.org/" class="text-light" target="_blank" rel="noopener">OpenHW Group</a>
+            &middot; CV32E20-DV CI Dashboard
+          </small>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <small class="text-light opacity-75">
+            Generated: {{ generated_at }}
+            &middot; <a href="https://github.com/{{ repo }}" class="text-light" target="_blank" rel="noopener">Source</a>
+          </small>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  const matrixData = {{ matrix_data_json|safe }};
+  const matrixTargets = {{ matrix_targets_json|safe }};
+  const matrixSimulators = {{ matrix_simulators_json|safe }};
+
+  function displayTarget(value) {
+    const parts = value.split(' / ');
+    if (parts.length < 2) return value;
+    return parts[0].toUpperCase() + ' / ' + parts.slice(1).join(' / ');
+  }
+
+  function renderMatrix(wfKey) {
+    const thead = document.getElementById('matrixHead');
+    const tbody = document.getElementById('matrixBody');
+    const stats = document.getElementById('matrixStats');
+    if (!thead || !tbody) return;
+
+    const activeSimulators = matrixSimulators.filter(function(sim) {
+      return matrixTargets.some(function(target) {
+        return matrixData[target] && matrixData[target][sim] && matrixData[target][sim][wfKey];
+      });
+    });
+
+    const activeTargets = matrixTargets.filter(function(target) {
+      return activeSimulators.some(function(sim) {
+        return matrixData[target] && matrixData[target][sim] && matrixData[target][sim][wfKey];
+      });
+    });
+
+    let pass = 0;
+    let fail = 0;
+    let other = 0;
+    let total = 0;
+
+    let headHtml = '<tr><th style="writing-mode:horizontal-tb; min-width:220px; font-size:0.8rem">Bench / Test</th>';
+    activeSimulators.forEach(function(sim) {
+      headHtml += '<th class="suite-header">' + sim + '</th>';
+    });
+    headHtml += '</tr>';
+    thead.innerHTML = headHtml;
+
+    let bodyHtml = '';
+    activeTargets.forEach(function(target) {
+      bodyHtml += '<tr>';
+      bodyHtml += '<td class="text-nowrap fw-medium" style="font-size:0.78rem; padding:6px 8px; vertical-align:middle">' + displayTarget(target) + '</td>';
+      activeSimulators.forEach(function(sim) {
+        const cell = matrixData[target] && matrixData[target][sim] && matrixData[target][sim][wfKey];
+        if (cell) {
+          total++;
+          const conclusion = cell.conclusion;
+          const title = displayTarget(target) + ' / ' + sim + ': ' + conclusion.toUpperCase() + ' / ' + cell.duration_display;
+          if (conclusion === 'success') {
+            pass++;
+            bodyHtml += '<td class="matrix-td"><a href="' + cell.html_url + '" target="_blank" rel="noopener" class="matrix-icon pass" title="' + title + '">&#10003;</a></td>';
+          } else if (conclusion === 'failure') {
+            fail++;
+            bodyHtml += '<td class="matrix-td"><a href="' + cell.html_url + '" target="_blank" rel="noopener" class="matrix-icon fail" title="' + title + '">&#10007;</a></td>';
+          } else {
+            other++;
+            bodyHtml += '<td class="matrix-td"><a href="' + cell.html_url + '" target="_blank" rel="noopener" class="matrix-icon skip" title="' + title + '">?</a></td>';
+          }
+        } else {
+          bodyHtml += '<td class="matrix-td"><span class="matrix-icon na" title="' + displayTarget(target) + ' / ' + sim + ': N/A">&ndash;</span></td>';
+        }
+      });
+      bodyHtml += '</tr>';
+    });
+    tbody.innerHTML = bodyHtml || '<tr><td class="text-muted p-3">No matrix data for this workflow yet.</td></tr>';
+
+    if (stats) {
+      stats.textContent = activeTargets.length + ' targets x ' + activeSimulators.length + ' simulators - '
+        + pass + ' passed' + (fail > 0 ? ', ' + fail + ' failed' : '')
+        + (other > 0 ? ', ' + other + ' skipped/other' : '') + ' (' + total + ' jobs)';
+    }
+  }
+
+  renderMatrix('{{ default_matrix_wf }}');
+
+  const chartData = {{ chart_data_json|safe }};
+
+  Object.keys(chartData).forEach(function(key) {
+    const wf = chartData[key];
+    const ctx = document.getElementById('chart-' + key);
+    if (!ctx || !wf.labels.length) return;
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: wf.labels,
+        datasets: [
+          {
+            label: 'Pass Rate (%)',
+            data: wf.pass_rates,
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            fill: true,
+            tension: 0.3,
+            yAxisID: 'y',
+            pointRadius: 3
+          },
+          {
+            label: 'Duration (min)',
+            data: wf.durations,
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            fill: false,
+            tension: 0.3,
+            yAxisID: 'y1',
+            pointRadius: 3,
+            borderDash: [5, 3]
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              title: function(items) { return 'Run #' + items[0].label; }
+            }
+          }
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            position: 'left',
+            min: 0,
+            max: 100,
+            title: { display: true, text: 'Pass Rate (%)', font: { size: 11 } },
+            ticks: { font: { size: 10 } }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            min: 0,
+            title: { display: true, text: 'Duration (min)', font: { size: 11 } },
+            ticks: { font: { size: 10 } },
+            grid: { drawOnChartArea: false }
+          },
+          x: {
+            ticks: { font: { size: 10 }, maxRotation: 45 }
+          }
+        }
+      }
+    });
+  });
+  </script>
 </body>
 </html>
