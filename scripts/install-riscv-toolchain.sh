@@ -5,9 +5,16 @@ INSTALL_DIR="${CV_SW_TOOLCHAIN:-$PWD/tools/riscv-toolchain}"
 PREFIX="${CV_SW_PREFIX:-riscv64-unknown-elf-}"
 
 has_complete_toolchain() {
+  local extra_cflags=()
+  local picolibc_specs
+  picolibc_specs="$("${PREFIX}gcc" --print-file-name=picolibc.specs 2>/dev/null || true)"
+  if [ -n "$picolibc_specs" ] && [ "$picolibc_specs" != "picolibc.specs" ]; then
+    extra_cflags+=(--specs=picolibc.specs)
+  fi
+
   command -v "${PREFIX}gcc" >/dev/null 2>&1 &&
     printf '#include <sys/stat.h>\nint main(void) { return 0; }\n' |
-      "${PREFIX}gcc" -x c - -c -o /tmp/cv32e20-riscv-toolchain-check.o >/dev/null 2>&1
+      "${PREFIX}gcc" "${extra_cflags[@]}" -x c - -c -o /tmp/cv32e20-riscv-toolchain-check.o >/dev/null 2>&1
 }
 
 if has_complete_toolchain; then

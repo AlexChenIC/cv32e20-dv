@@ -98,3 +98,9 @@ runs:
         echo "CV_SW_TOOLCHAIN=$TOOLCHAIN_ROOT" >> "$GITHUB_ENV"
         echo "CV_SW_PREFIX=$CV_PREFIX" >> "$GITHUB_ENV"
         echo "CV_SW_MARCH=${CV_SW_MARCH:-rv32imc_zicsr_zifencei}" >> "$GITHUB_ENV"
+        if [ -z "${CV_SW_CFLAGS:-}" ]; then
+          PICOLIBC_SPECS="$("${CV_PREFIX}gcc" --print-file-name=picolibc.specs 2>/dev/null || true)"
+          if [ -n "$PICOLIBC_SPECS" ] && [ "$PICOLIBC_SPECS" != "picolibc.specs" ]; then
+            echo "CV_SW_CFLAGS=--specs=picolibc.specs" >> "$GITHUB_ENV"
+          fi
+        fi
