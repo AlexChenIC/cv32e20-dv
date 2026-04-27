@@ -19,3 +19,13 @@ There are README files in each directory with additional information.
 
 ## Getting Started
 Check out the Quick Start Guide in the [CORE-V-VERIF Verification Strategy](https://docs.openhwgroup.org/projects/core-v-verif/en/latest/quick_start.html).
+
+## CI Bring-up Notes
+
+The Phase 1 GitHub Actions bring-up for CV32E20-DV is documented in:
+
+- [`docs/ci/mike-requirements-analysis.zh.md`](docs/ci/mike-requirements-analysis.zh.md)
+- [`docs/ci/implementation-report.zh.md`](docs/ci/implementation-report.zh.md)
+
+The CVE2 ACT4 workflow template is staged in [`cve2-ci-template`](cve2-ci-template)
+because that workflow must be enabled from the `cve2` repository context.

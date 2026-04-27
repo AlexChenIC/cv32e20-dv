@@ -1,0 +1,117 @@
+name: cv32e20-dashboard
+
+on:
+  workflow_run:
+    workflows:
+      - cv32e20-dv-ci
+      - cve2-act-ci
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: cv32e20-dashboard
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore dashboard data
+        run: |
+          mkdir -p /tmp/cv32e20-dashboard-data
+          if git ls-remote --heads origin gh-pages-cv32e20-dashboard-data | grep -q gh-pages-cv32e20-dashboard-data; then
+            git fetch origin gh-pages-cv32e20-dashboard-data --depth=1
+            git checkout origin/gh-pages-cv32e20-dashboard-data -- data/ 2>/dev/null && \
+              cp -r data/* /tmp/cv32e20-dashboard-data/ 2>/dev/null || true
+          fi
+
+      - name: Collect CI data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 dashboard/collect_data.py \
+            --repo "${{ github.repository }}" \
+            --data-dir /tmp/cv32e20-dashboard-data \
+            --fetch-count 20
+
+      - name: Generate dashboard
+        run: |
+          pip install jinja2
+          python3 dashboard/generate_dashboard.py \
+            --repo "${{ github.repository }}" \
+            --data-dir /tmp/cv32e20-dashboard-data \
+            --output-dir /tmp/cv32e20-dashboard-site
+          cp -r /tmp/cv32e20-dashboard-data /tmp/cv32e20-dashboard-site/data
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/cv32e20-dashboard-site
+
+      - name: Upload dashboard data
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv32e20-dashboard-data
+          path: /tmp/cv32e20-dashboard-data/
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  persist-data:
+    name: Persist Dashboard Data
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin gh-pages-cv32e20-dashboard-data >/dev/null 2>&1; then
+            git fetch origin gh-pages-cv32e20-dashboard-data --depth=1
+            git checkout -B gh-pages-cv32e20-dashboard-data origin/gh-pages-cv32e20-dashboard-data
+          else
+            git checkout --orphan gh-pages-cv32e20-dashboard-data
+            git rm -rf . >/dev/null 2>&1 || true
+            find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+            echo "# CV32E20 Dashboard Data" > README.md
+            git add README.md
+            git commit -m "Initialize cv32e20 dashboard data branch"
+          fi
+
+      - name: Download updated data
+        uses: actions/download-artifact@v4
+        with:
+          name: cv32e20-dashboard-data
+          path: data/
+
+      - name: Commit data
+        run: |
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No dashboard data changes"
+          else
+            git commit -m "Update cv32e20 dashboard data [skip ci]"
+            git push origin HEAD:gh-pages-cv32e20-dashboard-data
+          fi

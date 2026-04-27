@@ -1,0 +1,64 @@
+name: cve2-act-ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cve2-act-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  VERILATOR_VERSION: "5.046"
+  CV32E20_DV_REPO: https://github.com/openhwgroup/cv32e20-dv.git
+  CV32E20_DV_REF: main
+
+jobs:
+  act4-gen-certify:
+    name: ACT4 gen-certify / verilator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cv32e20-dv
+        uses: actions/checkout@v4
+        with:
+          repository: openhwgroup/cv32e20-dv
+          ref: ${{ env.CV32E20_DV_REF }}
+          path: cv32e20-dv
+
+      - name: Copy CI helper scripts from cve2
+        uses: actions/checkout@v4
+        with:
+          path: cve2-pr
+
+      - name: Install helper scripts into cv32e20-dv checkout
+        run: |
+          mkdir -p cv32e20-dv/scripts cv32e20-dv/.github/actions/setup-cv32e20-tools
+          cp -r cve2-pr/scripts/. cv32e20-dv/scripts/
+          cp cve2-pr/.github/actions/setup-cv32e20-tools/action.yml cv32e20-dv/.github/actions/setup-cv32e20-tools/action.yml
+
+      - name: Setup open-source tools
+        uses: ./cv32e20-dv/.github/actions/setup-cv32e20-tools
+        with:
+          verilator-version: ${{ env.VERILATOR_VERSION }}
+          install-verilator: "true"
+          install-riscv-toolchain: "true"
+          install-sail: "true"
+          install-uv: "true"
+
+      - name: Run ACT4 against this cve2 PR
+        working-directory: cv32e20-dv
+        env:
+          CV32E20_DV_ROOT: ${{ github.workspace }}/cv32e20-dv
+          CV_CORE_REPO: ${{ github.event.pull_request.head.repo.clone_url || github.server_url }}/${{ github.repository }}.git
+          CV_CORE_BRANCH: ${{ github.head_ref || github.ref_name }}
+          CV_CORE_HASH: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: scripts/run-act-certify.sh
+
+      - name: Upload ACT4 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cve2-act4-gen-certify
+          path: cv32e20-dv/sim/core/simulation_results/
+          retention-days: 14

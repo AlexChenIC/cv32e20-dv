@@ -1,0 +1,80 @@
+name: cv32e20-dv-ci
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: cv32e20-dv-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  VERILATOR_VERSION: "5.046"
+
+jobs:
+  core-hello-world:
+    name: Core hello-world / verilator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup open-source tools
+        uses: ./.github/actions/setup-cv32e20-tools
+        with:
+          verilator-version: ${{ env.VERILATOR_VERSION }}
+          install-verilator: "true"
+          install-riscv-toolchain: "true"
+
+      - name: Run core testbench hello-world
+        run: scripts/run-core-hello.sh
+
+      - name: Upload core results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-hello-world-verilator
+          path: sim/core/simulation_results/
+          retention-days: 14
+
+  uvm-hello-world:
+    name: UVM hello-world / ${{ matrix.simulator }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - simulator: vsim
+            runner: [self-hosted, linux, questa]
+          - simulator: dsim
+            runner: [self-hosted, linux, dsim]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup common tools
+        uses: ./.github/actions/setup-cv32e20-tools
+        with:
+          install-verilator: "false"
+          install-riscv-toolchain: "true"
+          require-udb: "false"
+
+      - name: Check simulator
+        run: |
+          if [ "${{ matrix.simulator }}" = "vsim" ]; then
+            vsim -version
+          else
+            dsim -version
+          fi
+
+      - name: Run UVM hello-world
+        run: scripts/run-uvm-hello.sh "${{ matrix.simulator }}"
+
+      - name: Upload UVM results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uvm-hello-world-${{ matrix.simulator }}
+          path: sim/uvmt/*_results/
+          retention-days: 14

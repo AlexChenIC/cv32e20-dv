@@ -1,0 +1,91 @@
+name: Setup CV32E20 Tools
+description: Cache and install tools needed by CV32E20-DV CI
+
+inputs:
+  install-verilator:
+    description: Build/install Verilator if not cached
+    required: false
+    default: "true"
+  verilator-version:
+    description: Verilator version
+    required: false
+    default: "5.046"
+  install-riscv-toolchain:
+    description: Install RISC-V GCC toolchain if not already available
+    required: false
+    default: "true"
+  install-sail:
+    description: Install/check Sail RISC-V model
+    required: false
+    default: "false"
+  install-uv:
+    description: Install/check uv package manager
+    required: false
+    default: "false"
+  require-udb:
+    description: Fail if UDB is not available
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Verilator
+      if: inputs.install-verilator == 'true'
+      uses: actions/cache@v4
+      with:
+        path: tools/verilator-${{ inputs.verilator-version }}
+        key: ${{ runner.os }}-cv32e20-verilator-${{ inputs.verilator-version }}-${{ hashFiles('scripts/install-verilator.sh') }}
+
+    - name: Cache RISC-V toolchain
+      if: inputs.install-riscv-toolchain == 'true'
+      uses: actions/cache@v4
+      with:
+        path: tools/riscv-toolchain
+        key: ${{ runner.os }}-cv32e20-riscv-toolchain-${{ hashFiles('scripts/install-riscv-toolchain.sh') }}-${{ env.RISCV_TOOLCHAIN_TARBALL_URL }}
+
+    - name: Cache Sail RISC-V
+      if: inputs.install-sail == 'true'
+      uses: actions/cache@v4
+      with:
+        path: tools/sail-riscv
+        key: ${{ runner.os }}-cv32e20-sail-riscv-${{ hashFiles('scripts/install-sail.sh') }}-${{ env.SAIL_RISCV_TARBALL_URL }}
+
+    - name: Install RISC-V toolchain
+      if: inputs.install-riscv-toolchain == 'true'
+      shell: bash
+      run: ${{ github.action_path }}/../../../scripts/install-riscv-toolchain.sh
+
+    - name: Install Verilator
+      if: inputs.install-verilator == 'true'
+      shell: bash
+      env:
+        VERILATOR_VERSION: ${{ inputs.verilator-version }}
+      run: ${{ github.action_path }}/../../../scripts/install-verilator.sh
+
+    - name: Install uv
+      if: inputs.install-uv == 'true'
+      shell: bash
+      run: ${{ github.action_path }}/../../../scripts/install-uv.sh
+
+    - name: Install Sail RISC-V
+      if: inputs.install-sail == 'true'
+      shell: bash
+      run: ${{ github.action_path }}/../../../scripts/install-sail.sh
+
+    - name: Check UDB
+      shell: bash
+      env:
+        REQUIRE_UDB: ${{ inputs.require-udb }}
+      run: ${{ github.action_path }}/../../../scripts/check-udb.sh
+
+    - name: Export tool environment
+      shell: bash
+      run: |
+        echo "$PWD/tools/verilator-${{ inputs.verilator-version }}/bin" >> "$GITHUB_PATH"
+        echo "$PWD/tools/riscv-toolchain/bin" >> "$GITHUB_PATH"
+        echo "$PWD/tools/sail-riscv/bin" >> "$GITHUB_PATH"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        echo "CV_SW_TOOLCHAIN=${CV_SW_TOOLCHAIN:-$PWD/tools/riscv-toolchain}" >> "$GITHUB_ENV"
+        echo "CV_SW_PREFIX=${CV_SW_PREFIX:-riscv64-unknown-elf-}" >> "$GITHUB_ENV"
+        echo "CV_SW_MARCH=${CV_SW_MARCH:-rv32imc_zicsr_zifencei}" >> "$GITHUB_ENV"
