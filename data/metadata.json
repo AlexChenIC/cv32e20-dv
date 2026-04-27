@@ -1,0 +1,8 @@
+{
+  "generated_at": "2026-04-27T10:06:40.529152+00:00",
+  "repo": "AlexChenIC/cv32e20-dv",
+  "workflows": [
+    "cv32e20_dv",
+    "cve2_act"
+  ]
+}
