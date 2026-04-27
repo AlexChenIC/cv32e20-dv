@@ -8,6 +8,11 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      deploy-pages:
+        description: Deploy to GitHub Pages when the repository plan supports Pages
+        type: boolean
+        default: false
 
 concurrency:
   group: cv32e20-dashboard
@@ -68,6 +73,7 @@ jobs:
   deploy:
     name: Deploy to Pages
     needs: build
+    if: ${{ !github.event.repository.private || (github.event_name == 'workflow_dispatch' && inputs.deploy-pages) }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

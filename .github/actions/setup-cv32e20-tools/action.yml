@@ -82,10 +82,19 @@ runs:
     - name: Export tool environment
       shell: bash
       run: |
+        CV_PREFIX="${CV_SW_PREFIX:-riscv64-unknown-elf-}"
+        if [ -n "${CV_SW_TOOLCHAIN:-}" ]; then
+          TOOLCHAIN_ROOT="$CV_SW_TOOLCHAIN"
+        elif command -v "${CV_PREFIX}gcc" >/dev/null 2>&1; then
+          TOOLCHAIN_BIN="$(dirname "$(command -v "${CV_PREFIX}gcc")")"
+          TOOLCHAIN_ROOT="$(cd "$TOOLCHAIN_BIN/.." && pwd)"
+        else
+          TOOLCHAIN_ROOT="$PWD/tools/riscv-toolchain"
+        fi
         echo "$PWD/tools/verilator-${{ inputs.verilator-version }}/bin" >> "$GITHUB_PATH"
-        echo "$PWD/tools/riscv-toolchain/bin" >> "$GITHUB_PATH"
+        echo "$TOOLCHAIN_ROOT/bin" >> "$GITHUB_PATH"
         echo "$PWD/tools/sail-riscv/bin" >> "$GITHUB_PATH"
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-        echo "CV_SW_TOOLCHAIN=${CV_SW_TOOLCHAIN:-$PWD/tools/riscv-toolchain}" >> "$GITHUB_ENV"
-        echo "CV_SW_PREFIX=${CV_SW_PREFIX:-riscv64-unknown-elf-}" >> "$GITHUB_ENV"
+        echo "CV_SW_TOOLCHAIN=$TOOLCHAIN_ROOT" >> "$GITHUB_ENV"
+        echo "CV_SW_PREFIX=$CV_PREFIX" >> "$GITHUB_ENV"
         echo "CV_SW_MARCH=${CV_SW_MARCH:-rv32imc_zicsr_zifencei}" >> "$GITHUB_ENV"

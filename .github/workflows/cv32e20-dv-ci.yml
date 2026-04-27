@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      run-core:
+        description: Run core hello-world with Verilator
+        type: boolean
+        default: true
+      run-uvm:
+        description: Run UVM hello-world on self-hosted Questa/DSim runners
+        type: boolean
+        default: false
 
 concurrency:
   group: cv32e20-dv-ci-${{ github.ref }}
@@ -17,6 +26,7 @@ env:
 jobs:
   core-hello-world:
     name: Core hello-world / verilator
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.run-core }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +51,7 @@ jobs:
 
   uvm-hello-world:
     name: UVM hello-world / ${{ matrix.simulator }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.run-uvm }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
