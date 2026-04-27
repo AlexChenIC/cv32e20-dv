@@ -1,1 +1,37 @@
-[]
+[
+  {
+    "id": 24989290663,
+    "run_number": 1,
+    "conclusion": "failure",
+    "html_url": "https://github.com/AlexChenIC/cv32e20-dv/actions/runs/24989290663",
+    "head_branch": "main",
+    "head_sha": "b0bbbc00",
+    "event": "workflow_dispatch",
+    "created_at": "2026-04-27T10:15:59Z",
+    "duration_seconds": 709,
+    "total_jobs": 2,
+    "passed_jobs": 0,
+    "failed_jobs": 1,
+    "skipped_jobs": 1,
+    "jobs": [
+      {
+        "bench": "core",
+        "testcase": "hello-world",
+        "simulator": "verilator",
+        "name": "Core hello-world / verilator",
+        "conclusion": "failure",
+        "html_url": "https://github.com/AlexChenIC/cv32e20-dv/actions/runs/24989290663/job/73170505064",
+        "duration_seconds": 703
+      },
+      {
+        "bench": "uvm",
+        "testcase": "hello-world",
+        "simulator": "${{ matrix.simulator }}",
+        "name": "UVM hello-world / ${{ matrix.simulator }}",
+        "conclusion": "skipped",
+        "html_url": "https://github.com/AlexChenIC/cv32e20-dv/actions/runs/24989290663/job/73170505398",
+        "duration_seconds": 0
+      }
+    ]
+  }
+]
