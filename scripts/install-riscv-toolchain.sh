@@ -4,12 +4,18 @@ set -euo pipefail
 INSTALL_DIR="${CV_SW_TOOLCHAIN:-$PWD/tools/riscv-toolchain}"
 PREFIX="${CV_SW_PREFIX:-riscv64-unknown-elf-}"
 
-if command -v "${PREFIX}gcc" >/dev/null 2>&1; then
+has_complete_toolchain() {
+  command -v "${PREFIX}gcc" >/dev/null 2>&1 &&
+    printf '#include <sys/stat.h>\nint main(void) { return 0; }\n' |
+      "${PREFIX}gcc" -x c - -c -o /tmp/cv32e20-riscv-toolchain-check.o >/dev/null 2>&1
+}
+
+if has_complete_toolchain; then
   echo "RISC-V toolchain already available: $(command -v "${PREFIX}gcc")"
   exit 0
 fi
 
-if [ -x "$INSTALL_DIR/bin/${PREFIX}gcc" ]; then
+if [ -x "$INSTALL_DIR/bin/${PREFIX}gcc" ] && has_complete_toolchain; then
   echo "Using cached RISC-V toolchain at $INSTALL_DIR"
   exit 0
 fi
@@ -25,5 +31,9 @@ if [ -n "${RISCV_TOOLCHAIN_TARBALL_URL:-}" ]; then
 fi
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf
+sudo apt-get install -y --no-install-recommends \
+  gcc-riscv64-unknown-elf \
+  binutils-riscv64-unknown-elf \
+  picolibc-riscv64-unknown-elf
 "${PREFIX}gcc" --version
+has_complete_toolchain
